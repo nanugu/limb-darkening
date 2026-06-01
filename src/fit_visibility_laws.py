@@ -44,7 +44,7 @@ WAVELENGTH_TABLE = [(1.55, 1.65), (2.18, 2.35)]
 #Full H and K-band
 WAVELENGTH_TABLE = [(1.55, 1.65), (2.08, 2.33)]
 
-SAVEFIG = 0
+SAVEFIG = 1
 
 @dataclass
 class LawFit:

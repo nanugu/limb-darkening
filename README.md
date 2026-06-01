@@ -56,7 +56,10 @@ and paper-level summaries.
 The merged table has one row per target and is the recommended starting point
 for reproducing the paper figures and summary statistics.
 
+### Processed figures
 
+The `figures/` directory contains generated versions of the paper figures for
+review convenience. 
 
 ## Typical workflow
 
