@@ -148,7 +148,8 @@ def _compute_grid_cliv(
     grid: str,
     law: str,
 ) -> tuple[np.ndarray, np.ndarray, tuple[float, ...]]:
-    sld = StellarLimbDarkening(Teff=float(teff), logg=float(logg), M_H=float(feh), ld_model=grid, ld_data_path=data_dir)
+    sld = StellarLimbDarkening(Teff=float(teff), logg=float(logg), M_H=float(feh), 
+                               ld_model=grid, ld_data_path=data_dir,  interpolate_type="trilinear")
     if band.upper() == "H":
         wavelengths, throughputs = W_H, T_H
     else:
