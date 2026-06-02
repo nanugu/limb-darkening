@@ -31,18 +31,18 @@ OUTPUT_FIT_RESULTS_CSV = CSV_DIR / "fit_visibility_laws.csv"
 OUTPUT_FIT_RESULTS_TXT = 'fit_visibility_laws.txt'
 
 # H_lower
-WAVELENGTH_TABLE = [(1.50, 1.6), (2.08, 2.33)]
+WAVELENGTH_TABLE = [(1.50, 1.6), (2.0, 2.37)]
 #H_higher
-WAVELENGTH_TABLE = [(1.6, 1.72), (2.08, 2.33)]
+WAVELENGTH_TABLE = [(1.6, 1.72), (2.0, 2.37)]
 
 #K_low
-WAVELENGTH_TABLE = [(1.55, 1.65), (2.00, 2.17)]
+WAVELENGTH_TABLE = [(1.50, 1.72), (2.00, 2.18)]
 
 #H_higher
-WAVELENGTH_TABLE = [(1.55, 1.65), (2.18, 2.35)]
+WAVELENGTH_TABLE = [(1.50, 1.72), (2.18, 2.37)]
 
 #Full H and K-band
-WAVELENGTH_TABLE = [(1.55, 1.65), (2.08, 2.33)]
+WAVELENGTH_TABLE = [(1.50, 1.72), (2.0, 2.37)]
 
 SAVEFIG = 1
 
