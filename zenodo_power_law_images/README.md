@@ -33,13 +33,3 @@ with:
 - Field of view: `max(5.5 mas, 1.5 x fitted diameter)`
 - Axes are in mas
 
-## Reproducibility
-
-To regenerate this package from the repository root:
-
-```bash
-python src/make_images.py
-```
-
-Generated files: 31
-Source CSV: `csv/merged_for_plots_merged.csv`
