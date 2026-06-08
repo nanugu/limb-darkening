@@ -588,6 +588,10 @@ def plot_mps2_vs_direct_clv_and_pl(df: pd.DataFrame, *, output: Path, dpi: int) 
         ("Kurucz", ["theta_CLV_Kurucz"], ["theta_CLV_Kurucz_err"], "s", "#7F7F7F"),
         ("MPS1", ["theta_CLV_MPS1"], ["theta_CLV_MPS1_err"], "^", "#999999"),
     ]
+    print("\nMPS2 direct-CLV diameter comparison")
+    print("Residual definition: 100 * (comparison - MPS2) / MPS2")
+    print(f"{'Comparison':<12}{'N':>5}{'median (%)':>14}{'RMS (%)':>12}{'mean (%)':>12}{'min (%)':>12}{'max (%)':>12}")
+
     fig, (ax, ax_res) = plt.subplots(
         2, 1, figsize=(7.4, 8.4), sharex=True,
         gridspec_kw={"height_ratios": [3.4, 1.25], "hspace": 0.05},
@@ -605,6 +609,14 @@ def plot_mps2_vs_direct_clv_and_pl(df: pd.DataFrame, *, output: Path, dpi: int) 
             continue
         xx, yy = x[mask], y[mask]
         residual = 100.0 * (yy - xx) / xx
+        print(
+            f"{label:<12}{residual.size:>5d}"
+            f"{np.nanmedian(residual):>14.3f}"
+            f"{np.sqrt(np.nanmean(residual**2)):>12.3f}"
+            f"{np.nanmean(residual):>12.3f}"
+            f"{np.nanmin(residual):>12.3f}"
+            f"{np.nanmax(residual):>12.3f}"
+        )
         ax.errorbar(xx, yy, xerr=xe[mask], yerr=ye[mask], fmt="none",
                     ecolor=color, elinewidth=0.9, alpha=0.16, zorder=1)
         ax.scatter(xx, yy, s=60, marker=marker, color=color, edgecolors="white",
@@ -684,6 +696,106 @@ def plot_teff_vs_pl_minus_direct_clv(df: pd.DataFrame, *, output: Path, dpi: int
     print(f"[saved] {output}")
 
 
+def diameter_correction(
+    numerator: np.ndarray,
+    numerator_err: np.ndarray,
+    reference: np.ndarray,
+    reference_err: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray]:
+    residual = 100.0 * (numerator - reference) / reference
+    err = np.full_like(residual, np.nan, dtype=float)
+    good = np.isfinite(numerator_err) | np.isfinite(reference_err)
+    if good.any():
+        num_err = np.nan_to_num(numerator_err, nan=0.0)
+        ref_err = np.nan_to_num(reference_err, nan=0.0)
+        err = 100.0 * np.sqrt(
+            (num_err / reference) ** 2
+            + ((numerator * ref_err) / (reference ** 2)) ** 2
+        )
+    return residual, err
+
+
+def plot_teff_vs_ud_pl_diameter_correction(df: pd.DataFrame, *, output: Path, dpi: int) -> None:
+    teff = teff_values(df)
+    theta_mps2 = values(df, ["theta_CLV_MPS2"])
+    theta_mps2_err = values(df, ["theta_CLV_MPS2_err"])
+    theta_pl = values(df, ["theta_PL", "PL_diam"])
+    theta_pl_err = values(df, ["theta_PL_err", "PL_diam_err", "PL_diam_err_ivw"])
+
+    fig, axes = plt.subplots(1, 2, figsize=(6.4, 4.2), sharey=True)
+    panel_specs = [
+        ("H", values(df, ["theta_ud_H", "H_UD_diam"]), values(df, ["theta_ud_H_err", "H_UD_diam_err", "H_UD_diam_err_ivw"])),
+        ("K", values(df, ["theta_ud_K", "K_UD_diam"]), values(df, ["theta_ud_K_err", "K_UD_diam_err", "K_UD_diam_err_ivw"])),
+    ]
+    all_residuals: list[np.ndarray] = []
+
+    for ax, (band, theta_ud, theta_ud_err) in zip(axes, panel_specs):
+        clv_mask = finite_xy(teff, theta_ud, theta_mps2) & (theta_ud != 0)
+        if clv_mask.any():
+            clv_resid, clv_err = diameter_correction(
+                theta_mps2[clv_mask], theta_mps2_err[clv_mask],
+                theta_ud[clv_mask], theta_ud_err[clv_mask],
+            )
+            ax.errorbar(
+                teff[clv_mask], clv_resid, yerr=clv_err, fmt="none",
+                ecolor="#1F78B4", elinewidth=0.75, capsize=1.5, alpha=0.20, zorder=1,
+            )
+            ax.scatter(
+                teff[clv_mask], clv_resid, s=45, marker="o", color="#1F78B4",
+                edgecolors="white", linewidths=0.45, alpha=0.92,
+                label=r"$\theta_{\rm CLV}^{\rm MPS2}$", zorder=3,
+            )
+            tx, ty = binned_trend(teff[clv_mask], clv_resid)
+            ax.plot(tx, ty, color="#1F78B4", lw=1.9, alpha=0.82, zorder=2)
+            all_residuals.append(clv_resid)
+
+        pl_mask = finite_xy(teff, theta_pl, theta_ud) & (theta_ud != 0)
+        if pl_mask.any():
+            pl_resid, pl_err = diameter_correction(
+                theta_pl[pl_mask], theta_pl_err[pl_mask],
+                theta_ud[pl_mask], theta_ud_err[pl_mask],
+            )
+            ax.errorbar(
+                teff[pl_mask], pl_resid, yerr=pl_err, fmt="none",
+                ecolor="#D95F02", elinewidth=0.75, capsize=1.5, alpha=0.16, zorder=1,
+            )
+            ax.scatter(
+                teff[pl_mask], pl_resid, s=42, marker="s", color="#D95F02",
+                edgecolors="white", linewidths=0.45, alpha=0.88,
+                label=r"$\theta_{\rm PL}$", zorder=3,
+            )
+            tx, ty = binned_trend(teff[pl_mask], pl_resid)
+            ax.plot(tx, ty, color="#D95F02", lw=1.8, alpha=0.75, zorder=2)
+            all_residuals.append(pl_resid)
+
+        ax.axhline(0.0, color="0.45", ls="--", lw=1.0, zorder=0)
+        ax.set_title(rf"${band}$ band", fontsize=12)
+        ax.set_xlabel(r"$T_{\rm eff}$ (K)")
+        ax.grid(True, which="major", alpha=0.24, linewidth=0.8)
+        ax.grid(True, which="minor", alpha=0.09, linewidth=0.5)
+        ax.xaxis.set_minor_locator(AutoMinorLocator())
+        ax.yaxis.set_minor_locator(AutoMinorLocator())
+        ax.tick_params(direction="in", which="both", top=True, right=True)
+        ax.legend(frameon=False, fontsize=9, loc="best")
+
+    if all_residuals:
+        vals = np.concatenate(all_residuals)
+        vals = vals[np.isfinite(vals)]
+        if vals.size:
+            lo, hi = float(vals.min()), float(vals.max())
+            pad = max(0.20, 0.12 * (hi - lo)) if hi > lo else 0.4
+            for ax in axes:
+                ax.set_ylim(lo - pad, hi + pad)
+
+    axes[0].set_ylabel(
+        r"$100(\theta-\theta_{\rm UD})/\theta_{\rm UD}$ (%)"
+    )
+    fig.tight_layout()
+    fig.savefig(output, dpi=dpi, bbox_inches="tight")
+    plt.close(fig)
+    print(f"[saved] {output}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--csv", default=DEFAULT_CSV)
@@ -726,6 +838,10 @@ def main() -> None:
     plot_teff_vs_pl_minus_direct_clv(
         df, dpi=args.dpi,
         output=outdir / "Teff_vs_PL_minus_direct_CLV_diameters.png",
+    )
+    plot_teff_vs_ud_pl_diameter_correction(
+        df, dpi=args.dpi,
+        output=outdir / "Teff_vs_CLV_PL_minus_UD_diameter_corrections_HK.png",
     )
 
 
